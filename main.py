@@ -6,4 +6,5 @@ with open('node1665') as i:
 
 p = Parser(text)
 d = p.parse()
+
 pprint(d)

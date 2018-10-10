@@ -1,51 +1,61 @@
-from .specs import tok_regex
-import re
+from collections import defaultdict
 
 
 class Parser:
     def __init__(self, text):
-        self.__it = re.finditer(tok_regex, text)
+        self.__lines = text.split('\n')
+        self.__it = 0
+
+    def __get_level(self, line):
+        stripped = line.lstrip(' ')
+        return (len(line) - len(stripped)) // 4
+
+    def __parse(self):
+        def nested_dict(): return defaultdict(nested_dict)
+        last_level = -1
+        stack = []
+        values = nested_dict()
+        line = self.__lines[self.__it]
+
+        while line != '':
+            level = self.__get_level(line)
+            if ' : ' in line:
+                key, value = line.split(' : ')
+                key, value = key.strip(), value.strip()
+                values[key] = value
+            else:
+                while last_level > level:
+                    values = stack.pop()
+                    last_level -= 1
+
+                key = line.strip()
+                stack.append(values)
+                values = values[key]
+
+            last_level = level
+            self.__it += 1
+            if self.__it >= len(self.__lines):
+                break
+            line = self.__lines[self.__it]
+
+        while len(stack) > 0:
+            values = stack.pop()
+        return values
 
     def __get_value(self):
-        mo = next(self.__it)
-        kind = mo.lastgroup
-        value = mo.group(kind)
-        if kind == 'SKIP':
-            mo = next(self.__it)
-            kind = mo.lastgroup
-            value = mo.group(kind)
-
-        # print(kind, value)
-        if kind == 'INT':
-            return int(value)
-        if kind == 'FLOAT':
-            return float(value)
-        if kind == 'BOOLEAN':
-            if value == 'Enabled' or value == 'Yes':
-                return True
-            return False
-        if kind == 'DATE':
-            # TODO! Parse date to date object
-            return value
-        if kind == 'NA':
-            return None
-
-        raise RuntimeError("Unknown Data Type, {}".format(value))
+        line = self.__lines[self.__it]
+        value = line.split()[1]
+        return value.strip()
 
     def parse(self):
+        # Add offset
         values = {}
-        for mo in self.__it:
-            kind = mo.lastgroup
-            value = mo.group(kind)
-            # print(kind, value)
-            if kind == 'COMMENT' or kind == 'SKIP':
+        while self.__it < len(self.__lines):
+            line = self.__lines[self.__it]
+            if line == '' or line[0] == '=':
+                self.__it += 1
                 continue
-            elif kind == 'UNKNOWN':
-                raise RuntimeError("Unknown Token, {}".format(value))
-            elif kind == 'KEY':
-                values[value] = self.parse()
-            elif kind == 'COLON':
-                return self.__get_value()
-            else:
-                return RuntimeError("Uknown Error, {}".format(value))
+            values = {**values, **self.__parse()}
+            self.__it += 1
+
         return values
