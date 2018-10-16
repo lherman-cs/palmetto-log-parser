@@ -23,6 +23,7 @@ class Parser:
                 key, value = line.split(' : ')
                 key, value = key.strip(), value.strip()
                 values[key] = value
+                level = last_level + 1 if level - last_level > 1 else level
             else:
                 while last_level > level:
                     values = stack.pop()

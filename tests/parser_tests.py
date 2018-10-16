@@ -25,7 +25,7 @@ class ParserTestCase(unittest.TestCase):
 
         while len(stack) > 0:
             m = stack.pop()
-            if type(m) != dict:
+            if not isinstance(m, dict):
                 continue
 
             stack.extend(m.values())
